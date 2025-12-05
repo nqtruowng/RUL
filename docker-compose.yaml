@@ -1,0 +1,66 @@
+services:
+  # --- Dịch vụ 1: HDFS NameNode ---
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    hostname: namenode
+    environment:
+      - CLUSTER_NAME=test
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+      - CORE_CONF_hadoop_http_staticuser=root
+      - HDFS_CONF_dfs_webhdfs_enabled=true
+      - HDFS_CONF_dfs_namenode_datanode_registration_ip___hostname___check=false
+    ports:
+      - "9870:9870"   # HDFS Web UI (Hadoop 3.x)
+      - "9000:9000"   # HDFS IPC
+    volumes:
+      - namenode_data:/hadoop/dfs/name
+    networks:
+      - bigdata-net
+
+  # --- Dịch vụ 2: HDFS DataNode ---
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode
+    hostname: datanode
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+      - CORE_CONF_hadoop_http_staticuser=root
+      - HDFS_CONF_dfs_datanode_http_address=datanode:9864
+      - HDFS_CONF_dfs_datanode_address=datanode:9866
+      - HDFS_CONF_dfs_datanode_ipc_address=datanode:9867
+    depends_on:
+      - namenode
+    volumes:
+      - datanode_data:/hadoop/dfs/data
+    ports:
+      - "9864:9864"   # DataNode Web UI (cần cho WebHDFS download)
+    networks:
+      - bigdata-net
+
+  # --- Dịch vụ 3: Flume Agent ---
+  flume:
+    image: probablyfine/flume:latest
+    container_name: flume-agent
+    depends_on:
+      - namenode
+      - datanode
+    environment:
+      - FLUME_AGENT_NAME=a1
+    volumes:
+      - ./flume.conf:/opt/flume-config/flume.conf
+      - ./flume_output:/tmp/flume_output
+    # Chạy Flume Agent trỏ tới file config
+    command: flume-ng agent -c /opt/flume/conf -f /opt/flume-config/flume.conf -n a1 -Dflume.root.logger=INFO,console
+    ports:
+      - "44444:44444" # Cổng để telnet gửi dữ liệu
+    networks:
+      - bigdata-net
+
+volumes:
+  namenode_data:
+  datanode_data:
+
+networks:
+  bigdata-net:
+    driver: bridge
