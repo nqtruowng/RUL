@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Engine RUL Prediction Report</title>
+    <style>
+        :root {
+            --bg-primary: #0f0f23;
+            --bg-secondary: #1a1a2e;
+            --bg-card: #16213e;
+            --accent-cyan: #00d9ff;
+            --accent-magenta: #ff006e;
+            --accent-yellow: #ffbe0b;
+            --accent-green: #06d6a0;
+            --text-primary: #e8e8e8;
+            --text-secondary: #a0a0a0;
+            --border-color: #2a2a4a;
+            --danger: #ef476f;
+            --warning: #ffd166;
+            --success: #06d6a0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-card) 100%);
+            padding: 2rem 3rem;
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-magenta), var(--accent-yellow));
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .header h1 span {
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-magenta));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .summary-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .summary-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 217, 255, 0.15);
+        }
+
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+        }
+
+        .summary-card.cyan::before { background: var(--accent-cyan); }
+        .summary-card.magenta::before { background: var(--accent-magenta); }
+        .summary-card.yellow::before { background: var(--accent-yellow); }
+        .summary-card.green::before { background: var(--accent-green); }
+        .summary-card.danger::before { background: var(--danger); }
+
+        .summary-card .label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+
+        .summary-card .value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .summary-card.cyan .value { color: var(--accent-cyan); }
+        .summary-card.magenta .value { color: var(--accent-magenta); }
+        .summary-card.yellow .value { color: var(--accent-yellow); }
+        .summary-card.green .value { color: var(--accent-green); }
+        .summary-card.danger .value { color: var(--danger); }
+
+        .summary-card .subtext {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: var(--accent-cyan);
+            border-radius: 2px;
+        }
+
+        .alert-banner {
+            background: linear-gradient(135deg, rgba(239, 71, 111, 0.15) 0%, rgba(255, 0, 110, 0.1) 100%);
+            border: 1px solid var(--danger);
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .alert-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--danger);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .alert-content h3 {
+            color: var(--danger);
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .alert-content p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .table-container {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .table-scroll {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .table-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-header h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .filter-tab {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+        }
+
+        .filter-tab:hover {
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+
+        .filter-tab.active {
+            background: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+            color: var(--bg-primary);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th {
+            background: var(--bg-secondary);
+            padding: 1rem 1.25rem;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .data-table td {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.9rem;
+        }
+
+        .data-table tbody tr {
+            transition: background 0.2s ease;
+        }
+
+        .data-table tbody tr:hover {
+            background: rgba(0, 217, 255, 0.05);
+        }
+
+        .data-table tbody tr.critical {
+            background: rgba(239, 71, 111, 0.1);
+        }
+
+        .data-table tbody tr.critical:hover {
+            background: rgba(239, 71, 111, 0.15);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-badge.critical {
+            background: rgba(239, 71, 111, 0.2);
+            color: var(--danger);
+        }
+
+        .status-badge.warning {
+            background: rgba(255, 209, 102, 0.2);
+            color: var(--warning);
+        }
+
+        .status-badge.normal {
+            background: rgba(6, 214, 160, 0.2);
+            color: var(--success);
+        }
+
+        .status-badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .rul-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.25rem;
+        }
+
+        .rul-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .rul-bar-fill.critical { background: var(--danger); }
+        .rul-bar-fill.warning { background: var(--warning); }
+        .rul-bar-fill.normal { background: var(--success); }
+
+        .sensor-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+
+        .sensor-tag {
+            padding: 0.25rem 0.6rem;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+            font-size: 0.75rem;
+            color: var(--accent-cyan);
+            border: 1px solid var(--border-color);
+        }
+
+        .subsystem-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .subsystem-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .subsystem-card h4 {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .subsystem-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .subsystem-name {
+            flex: 1;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .subsystem-bar {
+            width: 120px;
+            height: 6px;
+            background: var(--bg-secondary);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .subsystem-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-magenta));
+            border-radius: 3px;
+        }
+
+        .subsystem-value {
+            width: 50px;
+            text-align: right;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--accent-cyan);
+        }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-cyan);
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 1.5rem;
+            }
+            
+            .container {
+                padding: 1rem;
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+
+            .data-table {
+                min-width: 800px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1><span>Engine RUL</span> Prediction Report</h1>
+    </header>
+
+    <main class="container">
+        <section class="summary-grid" id="summary-cards"></section>
+
+        <div class="alert-banner" id="alert-banner" style="display: none;">
+            <div class="alert-icon">⚠️</div>
+            <div class="alert-content">
+                <h3>Critical Engines Detected</h3>
+                <p id="alert-text">Several engines require immediate maintenance attention.</p>
+            </div>
+        </div>
+
+        <h2 class="section-title">Subsystem Impact Analysis</h2>
+        <section class="subsystem-section" id="subsystem-analysis"></section>
+
+        <div class="table-container">
+            <div class="table-header">
+                <h3>Engine Status Details</h3>
+                <div class="filter-tabs">
+                    <button class="filter-tab active" onclick="filterTable('all')">All Engines</button>
+                    <button class="filter-tab" onclick="filterTable('critical')">Critical Only</button>
+                    <button class="filter-tab" onclick="filterTable('warning')">Warning</button>
+                    <button class="filter-tab" onclick="filterTable('normal')">Normal</button>
+                </div>
+            </div>
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Engine ID</th>
+                            <th>Predicted RUL</th>
+                            <th>True RUL</th>
+                            <th>Error</th>
+                            <th>Status</th>
+                            <th>Top Contributing Sensors</th>
+                        </tr>
+                    </thead>
+                    <tbody id="engine-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Embedded data from report.csv
+        const engines = [
+            {
+                engine_id: 1,
+                predicted_RUL: 116.81,
+                true_RUL: 112,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.1338935096040028), ('sensor_20', 0.1129924457653744), ('sensor_21', 0.08319703065148698), ('sensor_7', 0.07573012739844527), ('sensor_6', 0.07410767290848948)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.17810128671462122), ('Low-Pressure Compressor (LPC)', 0.13404034018577463), ('LPC outlet temperature (corrected)', 0.1338935096040028), ('Overall Inlet', 0.12449117402826734), ('Fan inlet pressure (psia)', 0.12441404897922398)]`
+            },
+            {
+                engine_id: 2,
+                predicted_RUL: 117.34,
+                true_RUL: 98,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.09186701343827107), ('sensor_6', 0.08682257134389829), ('sensor_20', 0.07900936542551217), ('sensor_7', 0.07030073475784016), ('sensor_2', 0.06883850560787985)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.18741364605723482), ('Overall Inlet', 0.1392383303149363), ('Fan inlet pressure (psia)', 0.13913924036572), ('Fan', 0.1331960950622596), ('High-Pressure Compressor (HPC)', 0.12204393650015757)]`
+            },
+            {
+                engine_id: 3,
+                predicted_RUL: 43.41,
+                true_RUL: 69,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.09281138936243477), ('sensor_13', 0.09244649245367934), ('sensor_8', 0.08774541019906139), ('sensor_4', 0.08652302153808221), ('sensor_11', 0.08204613626158862)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.23776440188356585), ('Overall Inlet', 0.13118584950727005), ('Fan inlet pressure (psia)', 0.1311297336832625), ('Combustion Chamber', 0.1309550208490108), ('High-Pressure Compressor (HPC)', 0.12742815180440473)]`
+            },
+            {
+                engine_id: 4,
+                predicted_RUL: 99.52,
+                true_RUL: 82,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.08579105430606017), ('sensor_11', 0.07846273951642903), ('sensor_4', 0.07583317867948813), ('sensor_7', 0.07162658973083623), ('sensor_13', 0.0710942712393605)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.2014692725101283), ('Fan', 0.13653208708990944), ('Overall Inlet', 0.1353001741043695), ('Fan inlet pressure (psia)', 0.1352420374326963), ('High-Pressure Compressor (HPC)', 0.1336694699150075)]`
+            },
+            {
+                engine_id: 5,
+                predicted_RUL: 77.62,
+                true_RUL: 91,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.09080501616111339), ('sensor_11', 0.08153298626695886), ('sensor_6', 0.08020641501494553), ('sensor_13', 0.07549698583933902), ('sensor_8', 0.06821669261198551)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.18781660779977563), ('Fan', 0.14324825970740232), ('Overall Inlet', 0.12551272622106222), ('Fan inlet pressure (psia)', 0.12545062986245897), ('High-Pressure Compressor (HPC)', 0.12155834098158802)]`
+            },
+            {
+                engine_id: 6,
+                predicted_RUL: 109.09,
+                true_RUL: 93,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_6', 0.08143151787565223), ('sensor_4', 0.07744508066940493), ('sensor_12', 0.07717842912964484), ('sensor_13', 0.07665062525464052), ('sensor_21', 0.07234297416716845)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.2264386800912139), ('Fan', 0.15033423586135644), ('Overall Inlet', 0.1256055122170024), ('Fan inlet pressure (psia)', 0.12554458931004892), ('High-Pressure Compressor (HPC)', 0.11028578155084595)]`
+            },
+            {
+                engine_id: 7,
+                predicted_RUL: 89.33,
+                true_RUL: 91,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.11407163483244963), ('sensor_20', 0.1075636680044492), ('sensor_9', 0.10072646909982566), ('sensor_7', 0.0773482332624525), ('sensor_14', 0.07661209282947458)]`,
+                top_subsystems: `[('Fan', 0.2234572961233483), ('High-Pressure Turbine (HPT)', 0.1441613726001851), ('Overall Inlet', 0.12130550991250529), ('Fan inlet pressure (psia)', 0.12123419926764119), ('Low-Pressure Compressor (LPC)', 0.11419905235208674)]`
+            },
+            {
+                engine_id: 8,
+                predicted_RUL: 109.93,
+                true_RUL: 95,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_8', 0.09482792314531514), ('sensor_12', 0.09221483657761123), ('sensor_13', 0.08775031207066439), ('sensor_11', 0.07122105020694382), ('sensor_4', 0.07105057191526308)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.21742802201025424), ('High-Pressure Compressor (HPC)', 0.15488221348082898), ('Overall Inlet', 0.1270993279141651), ('Fan inlet pressure (psia)', 0.12702768919729363), ('Combustion Chamber', 0.1103711363267317)]`
+            },
+            {
+                engine_id: 9,
+                predicted_RUL: 117.98,
+                true_RUL: 111,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_13', 0.08082571229979715), ('sensor_4', 0.07849305622321731), ('sensor_3', 0.0748682391825691), ('sensor_6', 0.07098144587724316), ('sensor_11', 0.06819851324217487)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.22585281774796026), ('Fan', 0.13698867606173654), ('High-Pressure Compressor (HPC)', 0.13371290070085315), ('Overall Inlet', 0.11705919861652245), ('Fan inlet pressure (psia)', 0.11699051803110891)]`
+            },
+            {
+                engine_id: 10,
+                predicted_RUL: 70.77,
+                true_RUL: 96,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.10535438512384376), ('sensor_7', 0.08497207136995737), ('sensor_20', 0.0758240397013879), ('sensor_14', 0.0718182423434973), ('sensor_6', 0.0710396282359458)]`,
+                top_subsystems: `[('Fan', 0.20118513106552582), ('High-Pressure Turbine (HPT)', 0.15866102240385083), ('Overall Inlet', 0.12940000238077298), ('Fan inlet pressure (psia)', 0.12932793258833303), ('Low-Pressure Compressor (LPC)', 0.10551101167474577)]`
+            },
+            {
+                engine_id: 11,
+                predicted_RUL: 62.62,
+                true_RUL: 97,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_8', 0.09563014881676214), ('sensor_11', 0.08868335061080201), ('sensor_12', 0.08604079270991201), ('sensor_13', 0.07937378977115031), ('sensor_4', 0.0792299536679735)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.21584017348795853), ('High-Pressure Compressor (HPC)', 0.1649313284142161), ('Overall Inlet', 0.12309953719007377), ('Fan inlet pressure (psia)', 0.12303963759528265), ('Combustion Chamber', 0.12259294039999252)]`
+            },
+            {
+                engine_id: 12,
+                predicted_RUL: 67.41,
+                true_RUL: 124,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.11019106219490547), ('sensor_20', 0.09319833390324742), ('sensor_7', 0.08297562084333175), ('sensor_9', 0.07906153488729624), ('sensor_14', 0.07395102349432434)]`,
+                top_subsystems: `[('Fan', 0.20948138930312635), ('High-Pressure Turbine (HPT)', 0.15959621875771918), ('Overall Inlet', 0.12408953212846896), ('Fan inlet pressure (psia)', 0.12401858040963165), ('Low-Pressure Compressor (LPC)', 0.11031443772209974)]`
+            },
+            {
+                engine_id: 13,
+                predicted_RUL: 69.75,
+                true_RUL: 95,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.09815786574406411), ('sensor_20', 0.09648536661298038), ('sensor_7', 0.09152105620889232), ('sensor_4', 0.08320886892749878), ('sensor_14', 0.07416169927095345)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.19381482909364134), ('Fan', 0.1933375904413434), ('Overall Inlet', 0.13449301155765578), ('Fan inlet pressure (psia)', 0.1344172441733919), ('Low-Pressure Compressor (LPC)', 0.09830173506186676)]`
+            },
+            {
+                engine_id: 14,
+                predicted_RUL: 114.79,
+                true_RUL: 107,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_11', 0.08856377239201164), ('sensor_13', 0.0833320088221338), ('sensor_4', 0.08029721000510999), ('sensor_12', 0.0787480753755223), ('sensor_8', 0.07822088254322353)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.23330175744984832), ('High-Pressure Compressor (HPC)', 0.13439051455593776), ('Combustion Chamber', 0.1321634934332639), ('Overall Inlet', 0.12975059832266508), ('Fan inlet pressure (psia)', 0.12968105257848087)]`
+            },
+            {
+                engine_id: 15,
+                predicted_RUL: 76.97,
+                true_RUL: 83,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.11991696091160292), ('sensor_20', 0.09416661195851285), ('sensor_6', 0.07565526130608383), ('sensor_21', 0.07173802739218897), ('sensor_7', 0.07172229821526674)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.19168234458675468), ('Fan', 0.13187889540901648), ('Overall Inlet', 0.12434617737274484), ('Fan inlet pressure (psia)', 0.12425614333029843), ('Low-Pressure Compressor (LPC)', 0.12004463984461401)]`
+            },
+            {
+                engine_id: 16,
+                predicted_RUL: 69.05,
+                true_RUL: 84,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_20', 0.10960325726504856), ('sensor_12', 0.09949366685824514), ('sensor_7', 0.07936874633803115), ('sensor_6', 0.07326636092777944), ('sensor_11', 0.06331738146280476)]`,
+                top_subsystems: `[('Fan', 0.17174735993372825), ('High-Pressure Turbine (HPT)', 0.16419396728223423), ('Overall Inlet', 0.12749687417819516), ('Fan inlet pressure (psia)', 0.12741497727398127), ('Overall Engine System', 0.10978041582811772)]`
+            },
+            {
+                engine_id: 17,
+                predicted_RUL: 47.15,
+                true_RUL: 50,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_9', 0.15777795215325952), ('sensor_14', 0.15280837600165398), ('sensor_12', 0.08278032855887507), ('sensor_20', 0.0741493946094329), ('sensor_7', 0.07008168497132462)]`,
+                top_subsystems: `[('Fan', 0.35549064465992475), ('Corrected fan speed (rpm)', 0.15777795215325952), ('Physical fan speed (rpm)', 0.15280837600165398), ('High-Pressure Turbine (HPT)', 0.13713494744921276), ('Combustion Chamber', 0.09941831039252824)]`
+            },
+            {
+                engine_id: 18,
+                predicted_RUL: 21.77,
+                true_RUL: 28,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_12', 0.09530712005659026), ('sensor_4', 0.0889782643560634), ('sensor_13', 0.08142900033867868), ('sensor_7', 0.08103537083446116), ('sensor_11', 0.07648639508321105)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.22214543145019588), ('Fan', 0.1438028789779919), ('Overall Inlet', 0.1375379246241049), ('Fan inlet pressure (psia)', 0.13749276048085632), ('Combustion Chamber', 0.12187390705467054)]`
+            },
+            {
+                engine_id: 19,
+                predicted_RUL: 78.22,
+                true_RUL: 87,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.12611962412552613), ('sensor_20', 0.08812581741427779), ('sensor_7', 0.0822075623401666), ('sensor_13', 0.0675028756340457), ('sensor_11', 0.06297821757693703)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.1764072801078916), ('Fan', 0.1512553594485543), ('Overall Inlet', 0.13373809371428502), ('Fan inlet pressure (psia)', 0.13367568830855323), ('Low-Pressure Compressor (LPC)', 0.12625566112009737)]`
+            },
+            {
+                engine_id: 20,
+                predicted_RUL: 12.8,
+                true_RUL: 16,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_4', 0.09458376043996312), ('sensor_11', 0.09131493799122686), ('sensor_13', 0.08667065507043684), ('sensor_8', 0.08285426304605327), ('sensor_15', 0.07738526957548562)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.2324024947459869), ('Combustion Chamber', 0.1645764559293631), ('High-Pressure Compressor (HPC)', 0.11668492185806546), ('Overall Inlet', 0.11558302356610459), ('Fan inlet pressure (psia)', 0.11551890236439563)]`
+            },
+            {
+                engine_id: 21,
+                predicted_RUL: 52.21,
+                true_RUL: 57,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_9', 0.14437246952628988), ('sensor_14', 0.120250744459787), ('sensor_12', 0.1080442779644988), ('sensor_20', 0.10103356433202335), ('sensor_7', 0.06661511446316087)]`,
+                top_subsystems: `[('Fan', 0.32177238064697733), ('Corrected fan speed (rpm)', 0.14437246952628988), ('High-Pressure Turbine (HPT)', 0.13123832034972538), ('Physical fan speed (rpm)', 0.120250744459787), ('Low-Pressure Compressor (LPC)', 0.10814709374736764)]`
+            },
+            {
+                engine_id: 22,
+                predicted_RUL: 121.21,
+                true_RUL: 111,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.10245889365437169), ('sensor_6', 0.08302596168186112), ('sensor_20', 0.07811504280519808), ('sensor_8', 0.07463499937804112), ('sensor_13', 0.0667659160431262)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.18755728199671234), ('High-Pressure Compressor (HPC)', 0.12455713662357519), ('Fan', 0.12281323225557947), ('Overall Inlet', 0.12189054448443509), ('Fan inlet pressure (psia)', 0.12180402340563012)]`
+            },
+            {
+                engine_id: 23,
+                predicted_RUL: 107.99,
+                true_RUL: 113,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.12119187565923362), ('sensor_20', 0.0952647213936937), ('sensor_6', 0.08935844967689449), ('op_setting_1', 0.08386666377261558), ('sensor_7', 0.06997419578357758)]`,
+                top_subsystems: `[('Unknown', 0.14711636459042596), ('High-Pressure Turbine (HPT)', 0.1468180263104461), ('Fan', 0.14643508856531187), ('Overall Inlet', 0.13048564201243582), ('Fan inlet pressure (psia)', 0.13040343181186353)]`
+            },
+            {
+                engine_id: 24,
+                predicted_RUL: 9.19,
+                true_RUL: 20,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_9', 0.2332928275711964), ('sensor_14', 0.20544503791757346), ('sensor_12', 0.06148540666662946), ('sensor_20', 0.05962359564805022), ('sensor_17', 0.05635834018790955)]`,
+                top_subsystems: `[('Fan', 0.48235056979944885), ('Corrected fan speed (rpm)', 0.2332928275711964), ('Physical fan speed (rpm)', 0.20544503791757346), ('High-Pressure Turbine (HPT)', 0.1050210688717704), ('Combustion Chamber', 0.0854068395334275)]`
+            },
+            {
+                engine_id: 25,
+                predicted_RUL: 114.0,
+                true_RUL: 145,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.11407733256210163), ('sensor_20', 0.10183597025131211), ('sensor_7', 0.09127963357636422), ('sensor_6', 0.07987238903494309), ('sensor_13', 0.06386271916706257)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.17081620190432473), ('Overall Inlet', 0.14515285665634836), ('Fan inlet pressure (psia)', 0.1450596734436938), ('Fan', 0.13740438944214603), ('Low-Pressure Compressor (LPC)', 0.11422186640024681)]`
+            },
+            {
+                engine_id: 26,
+                predicted_RUL: 112.96,
+                true_RUL: 119,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.13450921931166412), ('sensor_20', 0.08639437349244104), ('sensor_9', 0.07573538963692784), ('op_setting_1', 0.07499855253192188), ('sensor_7', 0.07447229479698268)]`,
+                top_subsystems: `[('Fan', 0.18188434447222704), ('High-Pressure Turbine (HPT)', 0.1460979291035741), ('Unknown', 0.1393784966990637), ('Low-Pressure Compressor (LPC)', 0.13470143185054173), ('LPC outlet temperature (corrected)', 0.13450921931166412)]`
+            },
+            {
+                engine_id: 27,
+                predicted_RUL: 106.48,
+                true_RUL: 66,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.10332602678157132), ('sensor_20', 0.09231632761248036), ('sensor_6', 0.07525449252746212), ('sensor_7', 0.07088520721971532), ('sensor_8', 0.07052397956073113)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.1911207143925423), ('High-Pressure Compressor (HPC)', 0.13440306023073684), ('Fan', 0.1323075047288887), ('Overall Inlet', 0.1315420013694721), ('Fan inlet pressure (psia)', 0.13147322926972083)]`
+            },
+            {
+                engine_id: 28,
+                predicted_RUL: 118.26,
+                true_RUL: 97,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_6', 0.08931501685698455), ('sensor_4', 0.0885770596706875), ('sensor_11', 0.082156564947506), ('sensor_12', 0.07737739759971787), ('sensor_13', 0.06807328466393078)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.21251608341863865), ('Fan', 0.18410194028052806), ('Combustion Chamber', 0.12731494075152672), ('Unknown', 0.11016815966069804), ('High-Pressure Compressor (HPC)', 0.09250246716530608)]`
+            },
+            {
+                engine_id: 29,
+                predicted_RUL: 65.27,
+                true_RUL: 90,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.09742734813025032), ('sensor_20', 0.08505914661423197), ('sensor_14', 0.0812137987333246), ('sensor_7', 0.07771434539185422), ('sensor_9', 0.07277179669049884)]`,
+                top_subsystems: `[('Fan', 0.2121710622233939), ('High-Pressure Turbine (HPT)', 0.16885467600855814), ('Overall Inlet', 0.12324528347824693), ('Fan inlet pressure (psia)', 0.12317922867723509), ('High-Pressure Compressor (HPC)', 0.10006965840299059)]`
+            },
+            {
+                engine_id: 30,
+                predicted_RUL: 106.16,
+                true_RUL: 115,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_6', 0.09095420697126742), ('sensor_11', 0.08825763710656467), ('sensor_4', 0.08708627521861141), ('sensor_13', 0.07256864289255709), ('sensor_12', 0.06797806883882801)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.19854457533989128), ('Fan', 0.15057350404566552), ('High-Pressure Compressor (HPC)', 0.13080991556680727), ('Combustion Chamber', 0.13012768451043574), ('Overall Inlet', 0.1100855473386797)]`
+            },
+            {
+                engine_id: 31,
+                predicted_RUL: 5.33,
+                true_RUL: 8,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_15', 0.10005422742326753), ('sensor_4', 0.09447073155549729), ('sensor_11', 0.09439751278470476), ('sensor_17', 0.07631558177296538), ('sensor_8', 0.0742526937047789)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.2109597364343988), ('Combustion Chamber', 0.17071309455767014), ('Fan', 0.13262344416822242), ('High-Pressure Compressor (HPC)', 0.11615605238658236), ('Overall Inlet', 0.1007508283655115)]`
+            },
+            {
+                engine_id: 32,
+                predicted_RUL: 39.88,
+                true_RUL: 48,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_9', 0.17376605192425199), ('sensor_14', 0.15146079130720108), ('sensor_12', 0.09072858157091457), ('sensor_20', 0.0787443225821511), ('sensor_7', 0.06813963176231772)]`,
+                top_subsystems: `[('Fan', 0.3669723117870495), ('Corrected fan speed (rpm)', 0.17376605192425199), ('Physical fan speed (rpm)', 0.15146079130720108), ('High-Pressure Turbine (HPT)', 0.1186680336686464), ('Overall Inlet', 0.09473357283423071)]`
+            },
+            {
+                engine_id: 33,
+                predicted_RUL: 77.58,
+                true_RUL: 106,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.07733899513792841), ('sensor_11', 0.07647377517303564), ('sensor_13', 0.06934791950909279), ('sensor_15', 0.06861922474051753), ('sensor_7', 0.06792134356246513)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.19313846141754668), ('Fan', 0.1578457182064462), ('Overall Inlet', 0.12203194342618515), ('Fan inlet pressure (psia)', 0.1219664632815101), ('Combustion Chamber', 0.11692213636270404)]`
+            },
+            {
+                engine_id: 34,
+                predicted_RUL: 1.71,
+                true_RUL: 7,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_11', 0.11302178437824534), ('sensor_4', 0.09408241076684219), ('sensor_8', 0.08606708970125389), ('sensor_13', 0.08268257939798004), ('sensor_15', 0.07825791554759684)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.24174036105343982), ('Combustion Chamber', 0.18718751988806706), ('High-Pressure Compressor (HPC)', 0.12098740565327146), ('Overall Inlet', 0.11756697734232699), ('Fan inlet pressure (psia)', 0.11750681090910178)]`
+            },
+            {
+                engine_id: 35,
+                predicted_RUL: 4.81,
+                true_RUL: 11,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_15', 0.10836140895832937), ('sensor_4', 0.10662997944128726), ('sensor_11', 0.09739919503232004), ('sensor_8', 0.08204133766598297), ('sensor_17', 0.07876780014161455)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.23254201692688717), ('Combustion Chamber', 0.17616699517393458), ('High-Pressure Compressor (HPC)', 0.12634742822323922), ('Fan', 0.1109188647472437), ('Physical core engine speed (rpm)', 0.10836140895832937)]`
+            },
+            {
+                engine_id: 36,
+                predicted_RUL: 17.29,
+                true_RUL: 19,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_4', 0.10549533556550263), ('sensor_17', 0.09578212734533816), ('sensor_15', 0.09514978607646173), ('sensor_11', 0.0909130981731671), ('sensor_8', 0.09009554436373635)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.22886216725328812), ('Combustion Chamber', 0.18669522551850526), ('High-Pressure Compressor (HPC)', 0.12260549689454422), ('Overall Inlet', 0.10959938040113801), ('Fan inlet pressure (psia)', 0.10954541841324783)]`
+            },
+            {
+                engine_id: 37,
+                predicted_RUL: 12.69,
+                true_RUL: 21,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_8', 0.09742238633529812), ('sensor_12', 0.09339926124078834), ('sensor_13', 0.0891297290759661), ('sensor_4', 0.08528340560894365), ('sensor_11', 0.08505663253459203)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.23071504920615474), ('Overall Inlet', 0.13475725817255477), ('Fan inlet pressure (psia)', 0.13470628827774309), ('Combustion Chamber', 0.13443858524244595), ('High-Pressure Compressor (HPC)', 0.13376682521110628)]`
+            },
+            {
+                engine_id: 38,
+                predicted_RUL: 51.44,
+                true_RUL: 50,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_11', 0.08386993574181115), ('sensor_15', 0.08084626286104916), ('sensor_4', 0.07999091249040363), ('sensor_14', 0.07588678544566409), ('sensor_20', 0.07283436549781007)]`,
+                top_subsystems: `[('Fan', 0.20363422706325535), ('High-Pressure Turbine (HPT)', 0.1745245165129304), ('Combustion Chamber', 0.14689043067133706), ('Overall Inlet', 0.11107722098997644), ('Fan inlet pressure (psia)', 0.11101469481685722)]`
+            },
+            {
+                engine_id: 39,
+                predicted_RUL: 121.09,
+                true_RUL: 142,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_20', 0.10978472477709503), ('sensor_7', 0.09824264571122666), ('sensor_12', 0.09073047639593029), ('op_setting_1', 0.08625353596315809), ('sensor_6', 0.08253380658895254)]`,
+                top_subsystems: `[('Fan', 0.16906868556147964), ('Unknown', 0.16720615295428332), ('High-Pressure Turbine (HPT)', 0.1441090571915533), ('Overall Inlet', 0.13856573136090103), ('Fan inlet pressure (psia)', 0.1384667767886041)]`
+            },
+            {
+                engine_id: 40,
+                predicted_RUL: 27.46,
+                true_RUL: 28,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_4', 0.0887936545640317), ('sensor_11', 0.08603412784221241), ('sensor_13', 0.0845054178350538), ('sensor_17', 0.08416397730719792), ('sensor_15', 0.08173256390514565)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.22766065681955383), ('Combustion Chamber', 0.17019810514941033), ('Fan', 0.12598280774697726), ('High-Pressure Compressor (HPC)', 0.11495433906490936), ('Overall Inlet', 0.11071537410607199)]`
+            },
+            {
+                engine_id: 41,
+                predicted_RUL: 10.9,
+                true_RUL: 18,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_8', 0.09930547741875562), ('sensor_11', 0.09526113815747421), ('sensor_12', 0.09166831879718369), ('sensor_13', 0.09108592852135285), ('sensor_4', 0.08036673504595043)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.22423099198939014), ('Combustion Chamber', 0.1416989643450305), ('High-Pressure Compressor (HPC)', 0.13849159159830102), ('Overall Inlet', 0.12729626453918388), ('Fan inlet pressure (psia)', 0.12723025740980454)]`
+            },
+            {
+                engine_id: 42,
+                predicted_RUL: 3.87,
+                true_RUL: 10,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_8', 0.10363937936750443), ('sensor_13', 0.09566122467101787), ('sensor_11', 0.09314511356144704), ('sensor_4', 0.08767467716557896), ('sensor_12', 0.08351976392523733)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.2567145682288905), ('Combustion Chamber', 0.1603761909799531), ('High-Pressure Compressor (HPC)', 0.1368313798367917), ('Overall Inlet', 0.11551300173916415), ('Fan inlet pressure (psia)', 0.11546550812817187)]`
+            },
+            {
+                engine_id: 43,
+                predicted_RUL: 66.65,
+                true_RUL: 59,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_13', 0.08409843938788959), ('sensor_7', 0.08111039645561934), ('sensor_12', 0.08094721302371043), ('sensor_4', 0.07711444976667814), ('sensor_20', 0.0726607402873377)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.20391827148636638), ('Overall Inlet', 0.14691846045783458), ('Fan inlet pressure (psia)', 0.14686197068152407), ('Fan', 0.13642806727521176), ('Combustion Chamber', 0.13073819315878227)]`
+            },
+            {
+                engine_id: 44,
+                predicted_RUL: 115.89,
+                true_RUL: 109,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.1051240194598169), ('sensor_7', 0.08669599856127744), ('sensor_20', 0.07607095713254301), ('op_setting_1', 0.07350448310226465), ('sensor_3', 0.07238289500658142)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.1733978442295345), ('Overall Inlet', 0.13343394543946754), ('Fan inlet pressure (psia)', 0.13334596989801528), ('High-Pressure Compressor (HPC)', 0.13231384039261893), ('Fan', 0.13088620599450024)]`
+            },
+            {
+                engine_id: 45,
+                predicted_RUL: 63.88,
+                true_RUL: 114,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.08184315459434804), ('sensor_6', 0.0769830028263654), ('sensor_13', 0.07543907438673776), ('sensor_4', 0.07522666176122683), ('sensor_7', 0.0715744500325286)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.19335302275513913), ('Fan', 0.1760439129672568), ('Overall Inlet', 0.12264270386092241), ('Fan inlet pressure (psia)', 0.12258242196597718), ('Combustion Chamber', 0.12154797898931669)]`
+            },
+            {
+                engine_id: 46,
+                predicted_RUL: 38.76,
+                true_RUL: 47,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_14', 0.10901822548853202), ('sensor_9', 0.09454119371933506), ('sensor_7', 0.0865716451845827), ('sensor_12', 0.0800315828082406), ('sensor_4', 0.07909536667594669)]`,
+                top_subsystems: `[('Fan', 0.24219754812104316), ('High-Pressure Turbine (HPT)', 0.17683633202949606), ('Combustion Chamber', 0.12639898323473342), ('Overall Inlet', 0.11726779274611104), ('Fan inlet pressure (psia)', 0.11719090981762384)]`
+            },
+            {
+                engine_id: 47,
+                predicted_RUL: 86.15,
+                true_RUL: 135,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_13', 0.0914095247541993), ('sensor_11', 0.08856027559731369), ('sensor_8', 0.0861625425336837), ('sensor_6', 0.07942874484085406), ('sensor_4', 0.07556734017699965)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.21203666527228243), ('High-Pressure Compressor (HPC)', 0.14548873325511452), ('Overall Inlet', 0.12778937301593538), ('Combustion Chamber', 0.12771866826274153), ('Fan inlet pressure (psia)', 0.12770840652800097)]`
+            },
+            {
+                engine_id: 48,
+                predicted_RUL: 94.04,
+                true_RUL: 92,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.09908370442465733), ('sensor_20', 0.08658750239922744), ('sensor_21', 0.08056978781875793), ('sensor_7', 0.07604409194298938), ('sensor_6', 0.06885416182079525)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.21681087100094695), ('Fan', 0.14561063477872485), ('Overall Inlet', 0.12932834662321424), ('Fan inlet pressure (psia)', 0.12924816465752795), ('Unknown', 0.1019282815498558)]`
+            },
+            {
+                engine_id: 49,
+                predicted_RUL: 9.66,
+                true_RUL: 21,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_11', 0.10058315095345308), ('sensor_8', 0.09853756185394856), ('sensor_4', 0.09462446948400983), ('sensor_15', 0.08623718168073854), ('sensor_17', 0.07885872104484645)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.22346382309485668), ('Combustion Chamber', 0.17944187199829953), ('High-Pressure Compressor (HPC)', 0.13231036456793166), ('Overall Inlet', 0.11611385512527167), ('Fan inlet pressure (psia)', 0.11607367922820397)]`
+            },
+            {
+                engine_id: 50,
+                predicted_RUL: 70.0,
+                true_RUL: 79,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.12082895202668706), ('sensor_20', 0.09725040476598718), ('sensor_7', 0.07848532401719029), ('sensor_6', 0.07120390068091341), ('op_setting_1', 0.06485910834323001)]`,
+                top_subsystems: `[('Fan', 0.17699414334987298), ('High-Pressure Turbine (HPT)', 0.1541781374293858), ('Overall Inlet', 0.13440414052256716), ('Fan inlet pressure (psia)', 0.1343313333601337), ('Low-Pressure Compressor (LPC)', 0.1209700282818084)]`
+            },
+            {
+                engine_id: 51,
+                predicted_RUL: 119.4,
+                true_RUL: 114,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.10337586344397325), ('sensor_6', 0.08565751048522084), ('sensor_4', 0.07392272840035272), ('sensor_20', 0.07305267489526174), ('sensor_13', 0.07011019193341192)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.2010093192885249), ('Fan', 0.1389024081904745), ('High-Pressure Compressor (HPC)', 0.12634779924098702), ('Overall Inlet', 0.11041119397974805), ('Fan inlet pressure (psia)', 0.11034021581641647)]`
+            },
+            {
+                engine_id: 52,
+                predicted_RUL: 22.86,
+                true_RUL: 29,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_9', 0.1777019093185596), ('sensor_14', 0.1710333455790241), ('sensor_20', 0.07517512030245622), ('sensor_12', 0.0714336639030585), ('sensor_7', 0.06945921545321689)]`,
+                top_subsystems: `[('Fan', 0.39390354124998267), ('Corrected fan speed (rpm)', 0.1777019093185596), ('Physical fan speed (rpm)', 0.1710333455790241), ('High-Pressure Turbine (HPT)', 0.11814838005165544), ('Combustion Chamber', 0.09632928053568673)]`
+            },
+            {
+                engine_id: 53,
+                predicted_RUL: 20.9,
+                true_RUL: 26,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_14', 0.13628893612217516), ('sensor_9', 0.11458878928098619), ('sensor_12', 0.07312034544835289), ('sensor_7', 0.07214776231570086), ('sensor_17', 0.06664172557830426)]`,
+                top_subsystems: `[('Fan', 0.29574158080097135), ('High-Pressure Turbine (HPT)', 0.14664388041726817), ('Physical fan speed (rpm)', 0.13628893612217516), ('Combustion Chamber', 0.12924908683124803), ('Corrected fan speed (rpm)', 0.11458878928098619)]`
+            },
+            {
+                engine_id: 54,
+                predicted_RUL: 119.96,
+                true_RUL: 97,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.1166290033405755), ('sensor_20', 0.10711205489016921), ('sensor_7', 0.09812901058017269), ('sensor_21', 0.08032697951235138), ('sensor_6', 0.07851637386338749)]`,
+                top_subsystems: `[('Fan', 0.18162440959529302), ('Overall Inlet', 0.1480453514728577), ('Fan inlet pressure (psia)', 0.14794301946466581), ('High-Pressure Turbine (HPT)', 0.14615672379087935), ('Unknown', 0.14442268262046434)]`
+            },
+            {
+                engine_id: 55,
+                predicted_RUL: 83.9,
+                true_RUL: 137,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_20', 0.10611203278585583), ('sensor_12', 0.10555139975953991), ('sensor_21', 0.08609045031841432), ('sensor_7', 0.07629727134839774), ('sensor_4', 0.06655334071417487)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.210445273988135), ('Fan', 0.1417639265746296), ('Overall Inlet', 0.12741948710504675), ('Fan inlet pressure (psia)', 0.12732198450406493), ('Overall Engine System', 0.1062842095190326)]`
+            },
+            {
+                engine_id: 56,
+                predicted_RUL: 11.08,
+                true_RUL: 15,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_8', 0.11246097523310498), ('sensor_11', 0.10793509050374023), ('sensor_4', 0.10149627537685768), ('sensor_15', 0.0966746760887379), ('sensor_13', 0.07813943358444182)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.23953279563040383), ('Combustion Chamber', 0.1812849805719793), ('High-Pressure Compressor (HPC)', 0.1527946483293303), ('HPC outlet static pressure (psia)', 0.11246097523310498), ('Fuel flow (pph)', 0.10793509050374023)]`
+            },
+            {
+                engine_id: 57,
+                predicted_RUL: 109.87,
+                true_RUL: 103,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_11', 0.09577519586692382), ('sensor_7', 0.08323712064036798), ('sensor_4', 0.08129017396163515), ('sensor_13', 0.07836898296291261), ('sensor_8', 0.07289600124773854)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.20198398378647592), ('Combustion Chamber', 0.14813173684208406), ('Overall Inlet', 0.13953434886041716), ('Fan inlet pressure (psia)', 0.13947785663571832), ('High-Pressure Compressor (HPC)', 0.13032954511212935)]`
+            },
+            {
+                engine_id: 58,
+                predicted_RUL: 38.97,
+                true_RUL: 37,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_4', 0.09012360910508968), ('sensor_11', 0.08811929882626904), ('sensor_13', 0.08108183832555738), ('sensor_8', 0.07975495540563907), ('sensor_12', 0.07589468256645857)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.21562282923037385), ('Combustion Chamber', 0.1452592456818794), ('Overall Inlet', 0.1309381267171325), ('Fan inlet pressure (psia)', 0.13089002459086024), ('Fan', 0.12641439081287428)]`
+            },
+            {
+                engine_id: 59,
+                predicted_RUL: 91.64,
+                true_RUL: 114,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.13039475487672014), ('sensor_20', 0.11999324793191715), ('sensor_7', 0.08197723273613299), ('sensor_21', 0.07565217916972898), ('op_setting_1', 0.06567344509086855)]`,
+                top_subsystems: `[('Fan', 0.14952736782372772), ('High-Pressure Turbine (HPT)', 0.14918407650401325), ('Low-Pressure Compressor (LPC)', 0.13053536952700082), ('LPC outlet temperature (corrected)', 0.13039475487672014), ('Overall Inlet', 0.12812541556516976)]`
+            },
+            {
+                engine_id: 60,
+                predicted_RUL: 89.71,
+                true_RUL: 100,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.08853680887170258), ('sensor_13', 0.0805671888979495), ('sensor_6', 0.07419412690601314), ('sensor_4', 0.07104093745473632), ('sensor_11', 0.06524874860620235)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.2148759753996763), ('Fan', 0.14510307355649688), ('High-Pressure Compressor (HPC)', 0.12237040758263866), ('Overall Inlet', 0.12017582021351442), ('Fan inlet pressure (psia)', 0.12010514830592958)]`
+            },
+            {
+                engine_id: 61,
+                predicted_RUL: 12.01,
+                true_RUL: 21,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_4', 0.08733078229175288), ('sensor_7', 0.081630875033476), ('sensor_13', 0.08008413472843973), ('sensor_11', 0.0774275135575638), ('sensor_12', 0.07601290722903879)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.21955694156241257), ('Fan', 0.16902337315735916), ('Combustion Chamber', 0.14270867633160972), ('Overall Inlet', 0.11834871861597143), ('Fan inlet pressure (psia)', 0.11830860636274665)]`
+            },
+            {
+                engine_id: 62,
+                predicted_RUL: 28.05,
+                true_RUL: 54,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_9', 0.1327843368634312), ('sensor_14', 0.13091310222692162), ('sensor_12', 0.09213694584727339), ('sensor_20', 0.08723225203227651), ('sensor_7', 0.05972687936349684)]`,
+                top_subsystems: `[('Fan', 0.320314073137674), ('Corrected fan speed (rpm)', 0.1327843368634312), ('Physical fan speed (rpm)', 0.13091310222692162), ('High-Pressure Turbine (HPT)', 0.12251051555770809), ('Combustion Chamber', 0.0986984815694908)]`
+            },
+            {
+                engine_id: 63,
+                predicted_RUL: 49.79,
+                true_RUL: 72,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_13', 0.0956440497450899), ('sensor_8', 0.0932535827537161), ('sensor_12', 0.08815716195663076), ('sensor_4', 0.08782964341078925), ('sensor_11', 0.07848392889834863)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.2232664104097851), ('High-Pressure Compressor (HPC)', 0.13801740946735325), ('Combustion Chamber', 0.13619659270226384), ('Overall Inlet', 0.13255941310996955), ('Fan inlet pressure (psia)', 0.13250410415597694)]`
+            },
+            {
+                engine_id: 64,
+                predicted_RUL: 15.26,
+                true_RUL: 28,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_4', 0.08973991645690453), ('sensor_12', 0.0856553814495536), ('sensor_8', 0.08362367711589305), ('sensor_13', 0.081930485914915), ('sensor_11', 0.0813313566546874)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.22551578991477003), ('Combustion Chamber', 0.1486374285799008), ('Overall Inlet', 0.12595917968828518), ('Fan inlet pressure (psia)', 0.12590029252568918), ('High-Pressure Compressor (HPC)', 0.12001050208704159)]`
+            },
+            {
+                engine_id: 65,
+                predicted_RUL: 92.19,
+                true_RUL: 128,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_20', 0.1129519204475843), ('op_setting_1', 0.10159719302809996), ('sensor_12', 0.10079827345291388), ('sensor_21', 0.09820074717749139), ('sensor_7', 0.08209823687382159)]`,
+                top_subsystems: `[('Fan', 0.18872399971515677), ('High-Pressure Turbine (HPT)', 0.16118913115262692), ('Unknown', 0.15511111892863613), ('Overall Engine System', 0.11311616274995329), ('Engine pressure ratio', 0.1129519204475843)]`
+            },
+            {
+                engine_id: 66,
+                predicted_RUL: 16.91,
+                true_RUL: 14,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_14', 0.12528796663969097), ('sensor_9', 0.11942542308983811), ('sensor_4', 0.07634240901217054), ('sensor_6', 0.076006307113249), ('sensor_17', 0.06927139007104816)]`,
+                top_subsystems: `[('Fan', 0.3207196968427781), ('High-Pressure Turbine (HPT)', 0.16548552615545667), ('Combustion Chamber', 0.13232112103969162), ('Physical fan speed (rpm)', 0.12528796663969097), ('Corrected fan speed (rpm)', 0.11942542308983811)]`
+            },
+            {
+                engine_id: 67,
+                predicted_RUL: 100.97,
+                true_RUL: 77,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_20', 0.10308938629462458), ('sensor_12', 0.10101085636160624), ('sensor_6', 0.09476368351022678), ('sensor_7', 0.07088392280423444), ('sensor_2', 0.0678252260442333)]`,
+                top_subsystems: `[('Fan', 0.18228209413950197), ('High-Pressure Turbine (HPT)', 0.15779192030761166), ('Overall Inlet', 0.13878945000900733), ('Fan inlet pressure (psia)', 0.13870914884846774), ('Unknown', 0.10832077752157206)]`
+            },
+            {
+                engine_id: 68,
+                predicted_RUL: 2.65,
+                true_RUL: 8,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_15', 0.09460879697152598), ('sensor_11', 0.09216550799229183), ('sensor_4', 0.08746940426452737), ('sensor_17', 0.07923185313037731), ('sensor_8', 0.07621972225128905)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.20697583955593657), ('Combustion Chamber', 0.17139736112266912), ('Fan', 0.13724870755977436), ('High-Pressure Compressor (HPC)', 0.11659166338413095), ('Overall Inlet', 0.1000925180599907)]`
+            },
+            {
+                engine_id: 69,
+                predicted_RUL: 117.85,
+                true_RUL: 121,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.08210350443772411), ('op_setting_1', 0.08025574786312135), ('sensor_20', 0.07410676585991897), ('sensor_21', 0.0713943490043164), ('sensor_6', 0.06957598869923257)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.206375389888066), ('Unknown', 0.13587504218098154), ('High-Pressure Compressor (HPC)', 0.12194845788163176), ('Fan', 0.11720844457467569), ('Overall Inlet', 0.11658197803182899)]`
+            },
+            {
+                engine_id: 70,
+                predicted_RUL: 79.34,
+                true_RUL: 94,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.09657538667765732), ('sensor_11', 0.0910803784523872), ('sensor_6', 0.088132152954446), ('sensor_13', 0.07271884969692882), ('sensor_8', 0.07232629955438614)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.1825979830950889), ('Fan', 0.14995707771004846), ('High-Pressure Compressor (HPC)', 0.1270084969021149), ('Combustion Chamber', 0.12269824026483551), ('Overall Inlet', 0.12210114538442585)]`
+            },
+            {
+                engine_id: 71,
+                predicted_RUL: 94.38,
+                true_RUL: 118,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.10697895623670495), ('sensor_20', 0.0934313154082203), ('sensor_6', 0.08996754560032495), ('op_setting_1', 0.0846496612554066), ('sensor_9', 0.07171927299073276)]`,
+                top_subsystems: `[('Fan', 0.2202748709050475), ('High-Pressure Turbine (HPT)', 0.14833534491682754), ('Unknown', 0.1410154517263032), ('Overall Inlet', 0.12309641763078707), ('Fan inlet pressure (psia)', 0.12297323747447422)]`
+            },
+            {
+                engine_id: 72,
+                predicted_RUL: 50.42,
+                true_RUL: 50,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.10861715015803912), ('sensor_7', 0.09532123547034793), ('sensor_14', 0.09049842152606456), ('sensor_9', 0.08396192067886511), ('sensor_20', 0.07845784278898929)]`,
+                top_subsystems: `[('Fan', 0.22350453376262397), ('High-Pressure Turbine (HPT)', 0.17472867221939592), ('Overall Inlet', 0.13151621710699496), ('Fan inlet pressure (psia)', 0.13145509370717565), ('Low-Pressure Compressor (LPC)', 0.10871941320565143)]`
+            },
+            {
+                engine_id: 73,
+                predicted_RUL: 101.75,
+                true_RUL: 131,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.11803346646564691), ('sensor_20', 0.10052896078161663), ('sensor_7', 0.08794369536962829), ('sensor_6', 0.06851862397191714), ('sensor_13', 0.06531813202718485)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.18503849216621185), ('Fan', 0.146138370255868), ('Overall Inlet', 0.13651362444595264), ('Fan inlet pressure (psia)', 0.13641720256254897), ('Low-Pressure Compressor (LPC)', 0.11816660074428653)]`
+            },
+            {
+                engine_id: 74,
+                predicted_RUL: 103.4,
+                true_RUL: 126,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_15', 0.07912591331079163), ('sensor_12', 0.07605165468211786), ('sensor_20', 0.07512321131121732), ('sensor_6', 0.07424632892231951), ('sensor_11', 0.07371647325455198)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.17778138947364727), ('Fan', 0.1773411688529231), ('Overall Inlet', 0.12174771565966883), ('Fan inlet pressure (psia)', 0.12167582914109124), ('Combustion Chamber', 0.10609748477486887)]`
+            },
+            {
+                engine_id: 75,
+                predicted_RUL: 87.37,
+                true_RUL: 113,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.10965555927934992), ('sensor_20', 0.09075230977099139), ('sensor_7', 0.08134487196992793), ('sensor_21', 0.0746732298870408), ('sensor_6', 0.06987911618305014)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.20335320315004585), ('Fan', 0.14280244563313635), ('Overall Inlet', 0.1358363841612123), ('Fan inlet pressure (psia)', 0.1357594936742134), ('Low-Pressure Compressor (LPC)', 0.10977442184287929)]`
+            },
+            {
+                engine_id: 76,
+                predicted_RUL: 3.68,
+                true_RUL: 10,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_15', 0.09407088976456494), ('sensor_14', 0.08678586706908299), ('sensor_11', 0.08003486058789902), ('sensor_4', 0.07875585371746426), ('sensor_6', 0.07569412697595879)]`,
+                top_subsystems: `[('Fan', 0.23584449311811867), ('High-Pressure Turbine (HPT)', 0.16577363852533283), ('Combustion Chamber', 0.15421712567424287), ('Overall Inlet', 0.09503237306263179), ('Fan inlet pressure (psia)', 0.09499036091736926)]`
+            },
+            {
+                engine_id: 77,
+                predicted_RUL: 18.98,
+                true_RUL: 34,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_4', 0.1018900449890029), ('sensor_13', 0.09621199529083052), ('sensor_8', 0.09563927162775882), ('sensor_12', 0.08687534242026368), ('sensor_11', 0.08541136018913555)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.24990638279246394), ('Combustion Chamber', 0.14078940463187972), ('Overall Inlet', 0.13580681966225733), ('Fan inlet pressure (psia)', 0.1357636399853523), ('High-Pressure Compressor (HPC)', 0.12543800962977397)]`
+            },
+            {
+                engine_id: 78,
+                predicted_RUL: 119.82,
+                true_RUL: 107,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.1369223051743279), ('sensor_20', 0.132449423035217), ('sensor_21', 0.09953270475760403), ('op_setting_1', 0.09025238838830567), ('op_setting_2', 0.07800673168750318)]`,
+                top_subsystems: `[('Unknown', 0.16834636519252033), ('Fan', 0.15679518293418404), ('High-Pressure Turbine (HPT)', 0.14285483344415867), ('Low-Pressure Compressor (LPC)', 0.1370687985834677), ('LPC outlet temperature (corrected)', 0.1369223051743279)]`
+            },
+            {
+                engine_id: 79,
+                predicted_RUL: 85.12,
+                true_RUL: 63,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.10502233460826597), ('sensor_7', 0.09675066846413752), ('sensor_4', 0.08815982505044703), ('sensor_20', 0.08005101706578022), ('sensor_8', 0.0784556400031782)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.2245612242780008), ('Overall Inlet', 0.14768825882374945), ('Fan inlet pressure (psia)', 0.14763486306657908), ('High-Pressure Compressor (HPC)', 0.12703847262072424), ('Fan', 0.11274382989442067)]`
+            },
+            {
+                engine_id: 80,
+                predicted_RUL: 96.0,
+                true_RUL: 90,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.08492292413082156), ('sensor_20', 0.07716123202087054), ('sensor_7', 0.07507537496826903), ('sensor_11', 0.07124442388107588), ('sensor_6', 0.07045698605207508)]`,
+                top_subsystems: `[('Fan', 0.19341623128961283), ('High-Pressure Turbine (HPT)', 0.1789061982413298), ('Overall Inlet', 0.11894266023537359), ('Fan inlet pressure (psia)', 0.1188899222203777), ('Combustion Chamber', 0.11220343851818651)]`
+            },
+            {
+                engine_id: 81,
+                predicted_RUL: 2.45,
+                true_RUL: 8,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_15', 0.10545881768880312), ('sensor_11', 0.10453850290510806), ('sensor_4', 0.08938715029736415), ('sensor_8', 0.07493222297589369), ('sensor_6', 0.07384397791245892)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.20598115320405952), ('Combustion Chamber', 0.1741687416025839), ('Fan', 0.14181797732259055), ('High-Pressure Compressor (HPC)', 0.1258616228051814), ('Physical core engine speed (rpm)', 0.10545881768880312)]`
+            },
+            {
+                engine_id: 82,
+                predicted_RUL: 4.47,
+                true_RUL: 9,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_11', 0.10909921476308368), ('sensor_15', 0.09302297732890376), ('sensor_8', 0.08910817615823222), ('sensor_13', 0.08441226583793768), ('sensor_17', 0.07852052442924107)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.2179853515375021), ('Combustion Chamber', 0.18761973919232475), ('High-Pressure Compressor (HPC)', 0.1212597931113285), ('Overall Inlet', 0.11352850439668065), ('Fan inlet pressure (psia)', 0.1134747054669428)]`
+            },
+            {
+                engine_id: 83,
+                predicted_RUL: 90.7,
+                true_RUL: 137,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.09733828540528931), ('sensor_20', 0.09354788294461425), ('sensor_7', 0.08529600795223728), ('sensor_21', 0.0702479858758277), ('sensor_6', 0.06975694245419811)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.18314014428008796), ('Overall Inlet', 0.13948646824894087), ('Fan inlet pressure (psia)', 0.13940284033005107), ('Fan', 0.13931206936417326), ('Unknown', 0.11858204298936174)]`
+            },
+            {
+                engine_id: 84,
+                predicted_RUL: 56.69,
+                true_RUL: 58,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_4', 0.0879948300449451), ('sensor_12', 0.08298394780982077), ('sensor_11', 0.07953460925109127), ('sensor_13', 0.07935602584425201), ('sensor_8', 0.07288173414996048)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.2036398963368667), ('Combustion Chamber', 0.13799747411821991), ('High-Pressure Compressor (HPC)', 0.13415634567770054), ('Overall Inlet', 0.13070076282503174), ('Fan inlet pressure (psia)', 0.1306351958338539)]`
+            },
+            {
+                engine_id: 85,
+                predicted_RUL: 110.85,
+                true_RUL: 118,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_6', 0.07747431949859808), ('sensor_13', 0.07636118925419552), ('sensor_7', 0.07360647743580363), ('sensor_12', 0.07289623719593688), ('sensor_20', 0.07038629671740762)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.20577461854270268), ('Overall Inlet', 0.13420435910055226), ('Fan inlet pressure (psia)', 0.1341068833239618), ('Fan', 0.12960447815396106), ('High-Pressure Compressor (HPC)', 0.1254866925511595)]`
+            },
+            {
+                engine_id: 86,
+                predicted_RUL: 108.51,
+                true_RUL: 89,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.09124535895250797), ('sensor_7', 0.08408259834570467), ('sensor_20', 0.08183170623907488), ('sensor_14', 0.08019702930091432), ('sensor_11', 0.06555752010593045)]`,
+                top_subsystems: `[('Fan', 0.196141836559659), ('High-Pressure Turbine (HPT)', 0.16900298898448493), ('Overall Inlet', 0.13243700449481993), ('Fan inlet pressure (psia)', 0.13235659783314085), ('Combustion Chamber', 0.1024411879872634)]`
+            },
+            {
+                engine_id: 87,
+                predicted_RUL: 117.22,
+                true_RUL: 116,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_20', 0.12665221055576145), ('sensor_12', 0.12133575366474347), ('sensor_7', 0.08451071110286744), ('sensor_6', 0.07409646957539225), ('op_setting_2', 0.066922513369306)]`,
+                top_subsystems: `[('Fan', 0.16772988995661597), ('Overall Inlet', 0.13262165677167914), ('Fan inlet pressure (psia)', 0.1325231403503267), ('High-Pressure Turbine (HPT)', 0.1319647463892738), ('Overall Engine System', 0.1268383489413145)]`
+            },
+            {
+                engine_id: 88,
+                predicted_RUL: 94.93,
+                true_RUL: 115,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_8', 0.08747320726191676), ('sensor_12', 0.08674504946507697), ('sensor_4', 0.07734347553526225), ('sensor_6', 0.07656901605055197), ('sensor_13', 0.07607793984188281)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.20342618130492598), ('High-Pressure Compressor (HPC)', 0.1445422255823438), ('Overall Inlet', 0.1348174840341878), ('Fan inlet pressure (psia)', 0.1347375232558092), ('Unknown', 0.1077486375117298)]`
+            },
+            {
+                engine_id: 89,
+                predicted_RUL: 102.86,
+                true_RUL: 136,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_6', 0.07610333430873917), ('sensor_12', 0.07401686395415037), ('sensor_11', 0.07265397095846461), ('sensor_21', 0.07022841435876694), ('sensor_4', 0.06837430923342776)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.2069463130738513), ('Fan', 0.13547656980393133), ('Overall Inlet', 0.12123819412827963), ('Fan inlet pressure (psia)', 0.12115943817763555), ('High-Pressure Compressor (HPC)', 0.1187915346309496)]`
+            },
+            {
+                engine_id: 90,
+                predicted_RUL: 21.89,
+                true_RUL: 28,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_4', 0.08604282754041168), ('sensor_11', 0.0796127495934994), ('sensor_14', 0.07511157895268114), ('sensor_15', 0.0748953386921565), ('sensor_13', 0.07256616627378673)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.19776640886580077), ('Fan', 0.18416412505804322), ('Combustion Chamber', 0.14409672274798307), ('Overall Inlet', 0.11452882650856341), ('Fan inlet pressure (psia)', 0.11446700055903344)]`
+            },
+            {
+                engine_id: 91,
+                predicted_RUL: 23.29,
+                true_RUL: 38,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_11', 0.10224916657542141), ('sensor_15', 0.10007754052471211), ('sensor_8', 0.09762314258182843), ('sensor_4', 0.09068030222154078), ('sensor_17', 0.07762295506931752)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.2335724339796884), ('Combustion Chamber', 0.17987212164473892), ('High-Pressure Compressor (HPC)', 0.1423649453960319), ('Overall Inlet', 0.10364962639374309), ('Fan inlet pressure (psia)', 0.10360005327751595)]`
+            },
+            {
+                engine_id: 92,
+                predicted_RUL: 19.9,
+                true_RUL: 20,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_8', 0.09917929200927775), ('sensor_4', 0.09743852924454811), ('sensor_11', 0.09626067305356988), ('sensor_15', 0.09611250166059579), ('sensor_13', 0.08055385519247878)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.2554983558595221), ('Combustion Chamber', 0.17622351217449617), ('High-Pressure Compressor (HPC)', 0.1310205862601143), ('Overall Inlet', 0.10806058638374046), ('Fan inlet pressure (psia)', 0.10800086220127872)]`
+            },
+            {
+                engine_id: 93,
+                predicted_RUL: 43.61,
+                true_RUL: 85,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_11', 0.08208460969908629), ('sensor_4', 0.08027897080473605), ('sensor_14', 0.07831903409659025), ('sensor_15', 0.07409793823167432), ('sensor_13', 0.0737817353480361)]`,
+                top_subsystems: `[('Fan', 0.2047469210679707), ('High-Pressure Turbine (HPT)', 0.19454657319152646), ('Combustion Chamber', 0.15028002948466337), ('Overall Inlet', 0.10385069342383069), ('Fan inlet pressure (psia)', 0.10379200249131726)]`
+            },
+            {
+                engine_id: 94,
+                predicted_RUL: 66.11,
+                true_RUL: 55,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_4', 0.08557545643856633), ('sensor_11', 0.08382559582047183), ('sensor_13', 0.07942678502032935), ('sensor_12', 0.07736178405184882), ('sensor_7', 0.07643764734549147)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.21382723905905388), ('Combustion Chamber', 0.15224060244306212), ('Fan', 0.13134411120447592), ('Overall Inlet', 0.1289087625273029), ('Fan inlet pressure (psia)', 0.12885171864574552)]`
+            },
+            {
+                engine_id: 95,
+                predicted_RUL: 120.48,
+                true_RUL: 128,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_12', 0.11302327236026195), ('sensor_20', 0.10885414716236551), ('sensor_7', 0.08416845429282273), ('op_setting_2', 0.06652126636072052), ('sensor_6', 0.06374449905778172)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.17278779182346185), ('Overall Inlet', 0.1389262694522348), ('Fan inlet pressure (psia)', 0.1388465493294312), ('Unknown', 0.11523892848040204), ('Low-Pressure Compressor (LPC)', 0.11319045916216397)]`
+            },
+            {
+                engine_id: 96,
+                predicted_RUL: 119.96,
+                true_RUL: 137,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_20', 0.09873406128709686), ('sensor_12', 0.09644936093201545), ('sensor_9', 0.092119942171682), ('op_setting_1', 0.08356723436439317), ('sensor_14', 0.080165618220902)]`,
+                top_subsystems: `[('Fan', 0.23054819227357226), ('High-Pressure Turbine (HPT)', 0.14527673811064168), ('Unknown', 0.14189104568529937), ('Overall Inlet', 0.11591702378490962), ('Fan inlet pressure (psia)', 0.1158358374208347)]`
+            },
+            {
+                engine_id: 97,
+                predicted_RUL: 88.67,
+                true_RUL: 82,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_9', 0.11313096930593271), ('sensor_12', 0.10814522527755116), ('sensor_14', 0.09562758614572012), ('sensor_7', 0.08106339008126309), ('sensor_20', 0.07667376094803616)]`,
+                top_subsystems: `[('Fan', 0.25952417964190944), ('High-Pressure Turbine (HPT)', 0.14951730109629946), ('Overall Inlet', 0.12067034023383102), ('Fan inlet pressure (psia)', 0.12060690048351186), ('Corrected fan speed (rpm)', 0.11313096930593271)]`
+            },
+            {
+                engine_id: 98,
+                predicted_RUL: 49.14,
+                true_RUL: 59,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_7', 0.08073421205695416), ('sensor_11', 0.07670499646367691), ('sensor_12', 0.07442783410612674), ('sensor_20', 0.07274881954309283), ('sensor_15', 0.07183681655329015)]`,
+                top_subsystems: `[('High-Pressure Turbine (HPT)', 0.17764343211791372), ('Fan', 0.1749925403965223), ('Combustion Chamber', 0.12853954452617136), ('Overall Inlet', 0.12779334117261665), ('Fan inlet pressure (psia)', 0.1277395019693688)]`
+            },
+            {
+                engine_id: 99,
+                predicted_RUL: 119.17,
+                true_RUL: 117,
+                imminent_failure_flag: false,
+                top_sensors: `[('sensor_20', 0.12295321964697295), ('sensor_12', 0.09917008846128358), ('sensor_9', 0.09214195149055315), ('sensor_14', 0.08967911168529293), ('sensor_21', 0.08964235751465857)]`,
+                top_subsystems: `[('Fan', 0.24208919064931067), ('High-Pressure Turbine (HPT)', 0.14156584234858283), ('Unknown', 0.127919773064521), ('Overall Engine System', 0.12316217305875488), ('Engine pressure ratio', 0.12295321964697295)]`
+            },
+            {
+                engine_id: 100,
+                predicted_RUL: 11.18,
+                true_RUL: 20,
+                imminent_failure_flag: true,
+                top_sensors: `[('sensor_9', 0.21749731231720026), ('sensor_14', 0.1882734784245834), ('sensor_20', 0.05720207459314342), ('sensor_17', 0.05679333923807265), ('sensor_12', 0.05675330733449561)]`,
+                top_subsystems: `[('Fan', 0.4516972368123162), ('Corrected fan speed (rpm)', 0.21749731231720026), ('Physical fan speed (rpm)', 0.1882734784245834), ('High-Pressure Turbine (HPT)', 0.12164157302822674), ('Combustion Chamber', 0.0901952927354153)]`
+            }
+        ];
+
+        // Calculate statistics
+        function calculateStats(data) {
+            const total = data.length;
+            const critical = data.filter(e => e.predicted_RUL <= 30).length;
+            const warning = data.filter(e => e.predicted_RUL > 30 && e.predicted_RUL <= 60).length;
+            const avgRUL = data.reduce((sum, e) => sum + e.predicted_RUL, 0) / total;
+            const avgError = data.reduce((sum, e) => sum + Math.abs(e.predicted_RUL - e.true_RUL), 0) / total;
+            return { total, critical, warning, avgRUL, avgError };
+        }
+
+        const stats = calculateStats(engines);
+
+        function renderSummaryCards() {
+            document.getElementById('summary-cards').innerHTML = `
+                <div class="summary-card cyan">
+                    <div class="label">Total Engines</div>
+                    <div class="value">${stats.total}</div>
+                    <div class="subtext">Analyzed with XAI</div>
+                </div>
+                <div class="summary-card danger">
+                    <div class="label">Critical (RUL ≤ 30)</div>
+                    <div class="value">${stats.critical}</div>
+                    <div class="subtext">Immediate attention needed</div>
+                </div>
+                <div class="summary-card yellow">
+                    <div class="label">Warning (30 < RUL ≤ 60)</div>
+                    <div class="value">${stats.warning}</div>
+                    <div class="subtext">Schedule maintenance</div>
+                </div>
+                <div class="summary-card green">
+                    <div class="label">Average Predicted RUL</div>
+                    <div class="value">${stats.avgRUL.toFixed(1)}</div>
+                    <div class="subtext">cycles remaining</div>
+                </div>
+                <div class="summary-card magenta">
+                    <div class="label">Mean Absolute Error</div>
+                    <div class="value">${stats.avgError.toFixed(1)}</div>
+                    <div class="subtext">cycles deviation</div>
+                </div>
+            `;
+        }
+
+        function renderAlertBanner() {
+            if (stats.critical > 0) {
+                document.getElementById('alert-banner').style.display = 'flex';
+                document.getElementById('alert-text').textContent = 
+                    `${stats.critical} engine(s) with RUL ≤ 30 cycles require immediate maintenance. ` +
+                    `IDs: ${engines.filter(e => e.predicted_RUL <= 30).map(e => e.engine_id).join(', ')}`;
+            }
+        }
+
+        function renderSubsystemAnalysis() {
+            const subsystems = {};
+            engines.forEach(e => {
+                const match = e.top_subsystems.match(/\('([^']+)', ([\d.]+)\)/g);
+                if (match) {
+                    match.forEach(m => {
+                        const [, name, score] = m.match(/\('([^']+)', ([\d.]+)\)/);
+                        subsystems[name] = (subsystems[name] || 0) + parseFloat(score);
+                    });
+                }
+            });
+
+            const sorted = Object.entries(subsystems).sort((a, b) => b[1] - a[1]).slice(0, 8);
+            const maxScore = sorted[0][1];
+
+            document.getElementById('subsystem-analysis').innerHTML = `
+                <div class="subsystem-card">
+                    <h4>Top Affected Subsystems (Aggregated)</h4>
+                    ${sorted.map(([name, score]) => `
+                        <div class="subsystem-item">
+                            <span class="subsystem-name">${name}</span>
+                            <div class="subsystem-bar">
+                                <div class="subsystem-bar-fill" style="width: ${(score / maxScore * 100).toFixed(1)}%"></div>
+                            </div>
+                            <span class="subsystem-value">${(score / engines.length * 100).toFixed(1)}%</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="subsystem-card">
+                    <h4>Critical Engines Overview</h4>
+                    ${engines.filter(e => e.predicted_RUL <= 30).slice(0, 6).map(e => `
+                        <div class="subsystem-item">
+                            <span class="subsystem-name">Engine #${e.engine_id}</span>
+                            <div class="subsystem-bar">
+                                <div class="subsystem-bar-fill" style="width: ${(e.predicted_RUL / 30 * 100).toFixed(1)}%; background: var(--danger);"></div>
+                            </div>
+                            <span class="subsystem-value" style="color: var(--danger);">${e.predicted_RUL.toFixed(1)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function getStatus(rul) {
+            if (rul <= 30) return 'critical';
+            if (rul <= 60) return 'warning';
+            return 'normal';
+        }
+
+        function renderTable(filter = 'all') {
+            let filteredData = engines;
+            if (filter === 'critical') filteredData = engines.filter(e => e.predicted_RUL <= 30);
+            else if (filter === 'warning') filteredData = engines.filter(e => e.predicted_RUL > 30 && e.predicted_RUL <= 60);
+            else if (filter === 'normal') filteredData = engines.filter(e => e.predicted_RUL > 60);
+
+            document.getElementById('engine-table-body').innerHTML = filteredData.map(e => {
+                const status = getStatus(e.predicted_RUL);
+                const error = (e.predicted_RUL - e.true_RUL).toFixed(1);
+                const errorStyle = parseFloat(error) > 0 ? 'color: var(--danger)' : 'color: var(--success)';
+                const sensors = e.top_sensors.match(/sensor_\d+/g) || [];
+
+                return `
+                    <tr class="${status === 'critical' ? 'critical' : ''}">
+                        <td><strong>#${e.engine_id}</strong></td>
+                        <td>
+                            <div>${e.predicted_RUL.toFixed(1)} cycles</div>
+                            <div class="rul-bar">
+                                <div class="rul-bar-fill ${status}" style="width: ${Math.min(e.predicted_RUL / 125 * 100, 100)}%"></div>
+                            </div>
+                        </td>
+                        <td>${e.true_RUL} cycles</td>
+                        <td style="${errorStyle}">${error > 0 ? '+' : ''}${error}</td>
+                        <td><span class="status-badge ${status}">${status}</span></td>
+                        <td>
+                            <div class="sensor-tags">
+                                ${sensors.slice(0, 3).map(s => `<span class="sensor-tag">${s}</span>`).join('')}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function filterTable(filter) {
+            document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+            renderTable(filter);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSummaryCards();
+            renderAlertBanner();
+            renderSubsystemAnalysis();
+            renderTable();
+        });
+    </script>
+</body>
+</html>
